@@ -17,6 +17,11 @@ import ModalAlert from './calibrationInputs/ModalAlert';
 const Store = require('electron-store');
 const store = new Store(); //runningODCal
 
+import {PythonShell} from 'python-shell'; // for generating fit data
+let pyshell_od135;
+let pyshell_od90;
+let pyshell_od3d;
+
 const densityButtons = Array.from(Array(16).keys())
 
 const cardStyles = theme => ({
@@ -77,7 +82,8 @@ class ODcal extends React.Component {
       resumeQuestion: 'Start new calibration or resume?',
       resumeAnswers: ['New', 'Resume'],
       keyboardPrompt: "Enter File Name or press ESC to autogenerate.",
-      vialsRead: 0
+      vialsRead: 0,
+      pyshell_successCount: 0
     };
     this.props.socket.on('broadcast', function(response) {
         console.log(response);
@@ -145,8 +151,92 @@ class ODcal extends React.Component {
     }.bind(this));
 
     this.props.socket.on('calibrationrawcallback', function(response) {
+      console.log('raw data logged. attempting to run pyshell')
       if (response == 'success'){
-        this.setState({alertQuestion: 'Successfully Logged. Do you want to exit?'})
+        let od135_pyshell_options = {
+            scriptPath: process.cwd() + '/app/components/',
+            pythonOptions: ['-u'], // get print results in real-time
+            args: [
+              '-a', this.props.socket.json.io.engine.hostname ,
+              '-n', this.state.experimentName,
+              '-t', 'sigmoid',
+              '-f', this.state.experimentName + '_od135',
+              '-p', 'od_135']
+          }
+        let od90_pyshell_options = {
+            scriptPath: process.cwd() + '/app/components/',
+            pythonOptions: ['-u'], // get print results in real-time
+            args: [
+              '-a', this.props.socket.json.io.engine.hostname ,
+              '-n', this.state.experimentName,
+              '-t', 'sigmoid',
+              '-f', this.state.experimentName + '_od90',
+              '-p', 'od_90']
+          }
+        let od3d_pyshell_options = {
+            scriptPath: process.cwd() + '/app/components/',
+            pythonOptions: ['-u'], // get print results in real-time
+            args: [
+              '-a', this.props.socket.json.io.engine.hostname ,
+              '-n', this.state.experimentName,
+              '-t', '3d',
+              '-f', this.state.experimentName + '_od3d',
+              '-p', 'od_90,od_135']
+          }
+
+        this.setState({pyshell_successCount: 0})
+        // Exectue pyshell script for making calibrated files
+        pyshell_od135 = new PythonShell('calibrate.py', od135_pyshell_options, function (err, results) {
+          if (err) throw err;
+          console.log('results: %j', results);
+        });
+
+        pyshell_od90 = new PythonShell('calibrate.py', od90_pyshell_options, function (err, results) {
+          if (err) throw err;
+          console.log('results: %j', results);
+        });
+
+        pyshell_od3d = new PythonShell('calibrate.py', od3d_pyshell_options, function (err, results) {
+          if (err) throw err;
+          console.log('results: %j', results);
+        });
+
+        pyshell_od135.on('message', function (message) {
+          console.log(message)
+          console.log(this.state.pyshell_successCount)
+          if (message == 'success'){
+            this.setState({pyshell_successCount: this.state.pyshell_successCount+1})
+            if (this.state.pyshell_successCount == 3) {
+              this.setState({alertQuestion: 'Successfully Logged. Do you want to exit?'})
+            } else {
+              this.setState({alertQuestion: this.state.pyshell_successCount + '/3 Logged...'})
+            }
+          }
+        }.bind(this));
+        pyshell_od90.on('message', function (message) {
+          console.log(message)
+          console.log(this.state.pyshell_successCount)
+          if (message == 'success'){
+            this.setState({pyshell_successCount: this.state.pyshell_successCount+1})
+            if (this.state.pyshell_successCount == 3) {
+              this.setState({alertQuestion: 'Successfully Logged. Do you want to exit?'})
+            } else {
+              this.setState({alertQuestion: this.state.pyshell_successCount + '/3 Logged...'})
+            }
+          }
+        }.bind(this));
+        pyshell_od3d.on('message', function (message) {
+          console.log(message)
+          console.log(this.state.pyshell_successCount)
+          if (message == 'success'){
+            this.setState({pyshell_successCount: this.state.pyshell_successCount+1})
+            if (this.state.pyshell_successCount == 3) {
+              this.setState({alertQuestion: 'Successfully Logged. Do you want to exit?'})
+            } else {
+              this.setState({alertQuestion: this.state.pyshell_successCount + '/3 Logged...'})
+            }
+          }
+        }.bind(this));
       }
     }.bind(this));
   }
@@ -347,7 +437,6 @@ class ODcal extends React.Component {
     rawList.push({param: 'temp', vialData: this.state.vialData.temp});
     saveData.raw = rawList;
     this.props.socket.emit('setrawcalibration', saveData);
-
   }
 
   handleKeyboardModal = () => {
@@ -359,7 +448,6 @@ class ODcal extends React.Component {
       this.handleFinishExpt();
     }
     if (answer == 'Exit'){
-      store.delete('runningODCal');
       this.setState({exiting: true});
     }
   }

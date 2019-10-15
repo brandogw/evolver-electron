@@ -16,6 +16,8 @@ import ModalAlert from './calibrationInputs/ModalAlert';
 const Store = require('electron-store');
 const store = new Store(); //runningTempCal
 
+import {PythonShell} from 'python-shell'; // for generating fit data
+let pyshell;
 
 const styles = {
   cardTempCalGUI: {
@@ -180,8 +182,31 @@ class TempCal extends React.Component {
     }.bind(this));
 
     this.props.socket.on('calibrationrawcallback', function(response) {
+      console.log('raw data logged. attempting to run pyshell')
       if (response == 'success'){
-        this.setState({alertQuestion: 'Successfully Logged. Do you want to exit?'})
+        let pyshell_options = {
+            scriptPath: process.cwd() + '/app/components/',
+            pythonOptions: ['-u'], // get print results in real-time
+            args: [
+              '-a', this.props.socket.json.io.engine.hostname ,
+              '-n', this.state.experimentName,
+              '-t', 'linear',
+              '-f', this.state.experimentName,
+              '-p', 'temp']
+          }
+
+        pyshell = new PythonShell('calibrate.py', pyshell_options, function (err, results) {
+          if (err) throw err;
+          console.log('results: %j', results);
+        });
+
+        pyshell.on('message', function (message) {
+          console.log(message)
+          if (message == 'success'){
+            this.setState({alertQuestion: 'Successfully Logged. Do you want to exit?'})
+          }
+        }.bind(this));
+
       }
     }.bind(this));
 
@@ -416,7 +441,6 @@ class TempCal extends React.Component {
        this.handleFinishExpt();
      }
      if (answer == 'Exit'){
-       store.delete('runningTempCal');
        this.setState({exiting: true});
      }
    }

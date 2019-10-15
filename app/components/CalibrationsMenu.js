@@ -29,7 +29,11 @@ class CalibrationsMenu extends React.Component {
             <Link to={{pathname:routes.DENSITYCALIBRATIONS, socket:this.props.socket, logger:this.props.logger}}><button className = "btn btn-lg homeButtons">O.D</button></Link>
             <Link to={{pathname:routes.TEMPCALIBRATIONS, socket:this.props.socket, logger:this.props.logger}}><button className = "btn btn-lg homeButtons">TEMP</button></Link>
         </div>
-
+        {/*
+        <div className="centered" style={{position: 'relative', margin: '-420px 0px 0px 850px'}}>
+          <Link to={{pathname:routes.CALVIEWER, socket:this.props.socket, logger:this.props.logger}}><button className = "btn btn-lg calViewButton">VIEW CAL</button></Link>
+        </div>
+        */}
       </div>
 
     );

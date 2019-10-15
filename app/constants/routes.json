@@ -7,5 +7,6 @@
   "TEMPCALIBRATIONS": "/tempcalibrate",
   "GRAPHING": "/graph",
   "EXPTMANAGER": "/exptmanager",
-  "EDITOR": "/scripteditor"
+  "EDITOR": "/scripteditor",
+  "CALVIEWER": "/calviewer"
 }
